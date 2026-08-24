@@ -45,8 +45,9 @@ class Settings:
     etf_top_n: int = 5
     t86_top_n: int = 10
     news_digest_limit: int = 30
-    etf_moves_per_fund: int = 15  # 每日摘要每檔買超/賣超各列幾筆
-    etf_detail_per_side: int = 40  # 專用 ETF 明細每邊列幾筆
+    etf_moves_per_fund: int = 15
+    etf_detail_per_side: int = 40
+    etf_consensus_limit: int = 25  # 共識排行最多列幾檔，避免洗頻
     share_change_threshold: int = 1_000  # 1 張才列入買賣超
     weight_change_threshold: float = 0.15  # 百分點（保留，持股張數未變時不列）
     consensus_min_etfs: int = 2

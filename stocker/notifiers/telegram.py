@@ -20,7 +20,7 @@ MAIN_KEYBOARD = {
 BOT_COMMANDS = [
     {"command": "start", "description": "開啟主選單"},
     {"command": "daily", "description": "立即推播每日摘要"},
-    {"command": "etf", "description": "主動ETF買賣超明細"},
+    {"command": "etf", "description": "主動ETF共識排行"},
     {"command": "mops", "description": "立刻抓重大訊息"},
     {"command": "help", "description": "使用說明"},
 ]

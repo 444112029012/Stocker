@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("mops", help="立刻抓一次重大訊息（高重要性才推播）")
     daily = sub.add_parser("daily", help="立刻產生並推播每日摘要")
     daily.add_argument("--print-only", action="store_true", help="只印出摘要、不推播")
-    etf = sub.add_parser("etf", help="立刻推主動 ETF 買賣超明細")
+    etf = sub.add_parser("etf", help="立刻推主動 ETF 共識排行")
     etf.add_argument("--print-only", action="store_true", help="只印出明細、不推播")
     args = parser.parse_args(argv)
 
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
             text = app.etf_report(send=not args.print_only)
             print(text)
             if not args.print_only:
-                print("\n已推播主動 ETF 買賣超明細")
+                print("\n已推播主動 ETF 共識排行")
             return 0
     finally:
         app.close()

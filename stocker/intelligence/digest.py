@@ -5,7 +5,7 @@ from collections import defaultdict
 from stocker.collectors.etf import EtfSnapshot
 from stocker.collectors.mops import MaterialNews
 from stocker.collectors.t86 import TrustFlow
-from stocker.intelligence.etf_diff import HoldingMove, aggregate_flows, consensus_moves
+from stocker.intelligence.etf_diff import HoldingMove, consensus_moves
 from stocker.settings import Settings
 
 
@@ -26,29 +26,25 @@ def _lots(shares: int) -> str:
     return _qty(shares)
 
 
-def _move_line(move: HoldingMove) -> str:
-    tag = ""
-    if move.action == "new":
-        tag = " 新進"
-    elif move.action == "exit":
-        tag = " 出清"
-    return (
-        f"  {move.stock_code} {move.stock_name}  {_qty(move.delta_shares)}  "
-        f"{move.prev_weight:.2f}%→{move.weight:.2f}%{tag}"
-    )
-
-
-def _split_sides(moves: list[HoldingMove]) -> tuple[list[HoldingMove], list[HoldingMove]]:
-    buys = sorted(
-        (m for m in moves if m.delta_shares > 0),
-        key=lambda m: m.delta_shares,
-        reverse=True,
-    )
-    sells = sorted(
-        (m for m in moves if m.delta_shares < 0),
-        key=lambda m: m.delta_shares,
-    )
-    return buys, sells
+def _comparison_dates(
+    snapshots: list[EtfSnapshot],
+    prev_dates: dict[str, str],
+) -> list[str]:
+    pairs: list[tuple[str, str, str]] = []
+    for snap in snapshots:
+        prev = prev_dates.get(snap.etf_code, "")
+        if prev and snap.as_of:
+            pairs.append((snap.etf_code, prev, snap.as_of))
+    if not pairs:
+        return ["比較期間：尚無兩個交易日可對照"]
+    unique = {(prev, curr) for _code, prev, curr in pairs}
+    if len(unique) == 1:
+        prev, curr = next(iter(unique))
+        return [f"比較期間：{prev} → {curr}"]
+    lines = ["比較期間（各檔資料日）："]
+    for code, prev, curr in pairs:
+        lines.append(f"  {code}  {prev} → {curr}")
+    return lines
 
 
 def format_etf_flow_section(
@@ -58,20 +54,17 @@ def format_etf_flow_section(
     etf_has_history: bool,
     prev_dates: dict[str, str] | None = None,
     per_side: int | None = None,
-    title: str = "【主動式 ETF 規模前五大】買賣超明細",
+    title: str = "【主動式 ETF 共識排行】",
 ) -> list[str]:
     prev_dates = prev_dates or {}
-    limit = settings.etf_moves_per_fund if per_side is None else per_side
+    limit = settings.etf_consensus_limit if per_side is None else per_side
     lines = [title]
-    by_etf: dict[str, list[HoldingMove]] = defaultdict(list)
-    for move in moves:
-        by_etf[move.etf_code].append(move)
 
     if not snapshots:
         lines.append("持股資料尚未取得")
         return lines
     if not etf_has_history:
-        lines.append("已寫入今日持股基準，下一個交易日才會出現買賣超明細")
+        lines.append("已寫入今日持股基準，下一個交易日才會出現共識排行")
         for snap in snapshots:
             aum = f"{snap.aum / 1e8:.0f} 億" if snap.aum else "—"
             lines.append(
@@ -79,55 +72,43 @@ def format_etf_flow_section(
             )
         return lines
 
-    for snap in snapshots:
-        aum = f"{snap.aum / 1e8:.0f} 億" if snap.aum else "—"
-        prev = prev_dates.get(snap.etf_code) or (by_etf[snap.etf_code][0].prev_as_of if by_etf[snap.etf_code] else "")
-        date_range = f"{prev}→{snap.as_of}" if prev else snap.as_of
-        lines.append(f"{snap.etf_code} {snap.etf_name}｜規模 {aum}｜{date_range}")
-        fund_moves = by_etf.get(snap.etf_code, [])
-        buys, sells = _split_sides(fund_moves)
-        if not fund_moves:
-            lines.append("  無超過 1 張的持股增減")
-            continue
-        lines.append(f"買超 {len(buys)} 檔")
-        for move in buys[:limit]:
-            lines.append(_move_line(move))
-        if len(buys) > limit:
-            lines.append(f"  …另有 {len(buys) - limit} 檔買超")
-        lines.append(f"賣超 {len(sells)} 檔")
-        for move in sells[:limit]:
-            lines.append(_move_line(move))
-        if len(sells) > limit:
-            lines.append(f"  …另有 {len(sells) - limit} 檔賣超")
-
-    agg = aggregate_flows(moves)
-    agg_buys = [r for r in agg if r[0] == "buy"]
-    agg_sells = [r for r in agg if r[0] == "sell"]
-    lines.append("")
-    lines.append("【主動ETF合計買賣超】五檔張數加總")
-    if not agg:
-        lines.append("無")
-    else:
-        lines.append("買超")
-        for _side, code, name, net, etfs in agg_buys[:limit]:
-            lines.append(f"  {code} {name}  {_qty(net)}｜{', '.join(etfs)}")
-        if len(agg_buys) > limit:
-            lines.append(f"  …另有 {len(agg_buys) - limit} 檔")
-        lines.append("賣超")
-        for _side, code, name, net, etfs in agg_sells[:limit]:
-            lines.append(f"  {code} {name}  {_qty(net)}｜{', '.join(etfs)}")
-        if len(agg_sells) > limit:
-            lines.append(f"  …另有 {len(agg_sells) - limit} 檔")
+    lines.extend(_comparison_dates(snapshots, prev_dates))
+    covered = "、".join(f"{s.etf_code}" for s in snapshots)
+    lines.append(f"涵蓋：{covered}")
+    lines.append(f"至少 {settings.consensus_min_etfs} 檔同步加減碼才列入，依同步檔數排序")
 
     consensus = consensus_moves(moves, settings.consensus_min_etfs)
-    lines.append("")
-    lines.append(f"【共識訊號】至少 {settings.consensus_min_etfs} 檔同時加減碼")
     if not consensus:
-        lines.append("無")
-    else:
-        for side, code, name, etfs, net in consensus[:10]:
-            label = "同步加碼" if side == "buy" else "同步減碼"
-            lines.append(f"  {label} {code} {name}  {_qty(net)}｜{', '.join(etfs)}")
+        lines.append("本期沒有達到門檻的共識訊號")
+        return lines
+
+    by_count: dict[int, list[tuple]] = defaultdict(list)
+    for row in consensus:
+        by_count[len(row[3])].append(row)
+
+    shown = 0
+    leftover = 0
+    for count in sorted(by_count, reverse=True):
+        group = by_count[count]
+        buys = [r for r in group if r[0] == "buy"]
+        sells = [r for r in group if r[0] == "sell"]
+        rows = buys + sells
+        if shown >= limit:
+            leftover += len(rows)
+            continue
+        lines.append("")
+        lines.append(f"■ {count} 檔同步（加碼 {len(buys)}／減碼 {len(sells)}）")
+        for rank, (side, code, name, etfs, net) in enumerate(rows, start=1):
+            if shown >= limit:
+                leftover += len(rows) - rank + 1
+                break
+            label = "加碼" if side == "buy" else "減碼"
+            lines.append(
+                f"{rank}. {label} {code} {name}  {_qty(net)}｜{', '.join(etfs)}"
+            )
+            shown += 1
+    if leftover:
+        lines.append(f"…另有 {leftover} 檔未列出，避免洗頻")
     return lines
 
 
@@ -189,7 +170,7 @@ def format_daily_digest(
             settings,
             etf_has_history,
             prev_dates=prev_dates,
-            per_side=settings.etf_moves_per_fund,
+            per_side=settings.etf_consensus_limit,
         )
     )
     lines.append("")
@@ -206,7 +187,7 @@ def format_etf_detail(
     errors: list[str] | None = None,
 ) -> str:
     as_of = snapshots[0].as_of if snapshots else ""
-    lines = [f"📈 主動式 ETF 買賣超明細 {as_of}", ""]
+    lines = [f"📈 主動式 ETF 共識排行 {as_of}", ""]
     lines.extend(
         format_etf_flow_section(
             snapshots,
@@ -214,7 +195,7 @@ def format_etf_detail(
             settings,
             etf_has_history,
             prev_dates=prev_dates,
-            per_side=settings.etf_detail_per_side,
+            per_side=settings.etf_consensus_limit,
         )
     )
     if errors:
@@ -222,7 +203,7 @@ def format_etf_detail(
         lines.append("⚠️ 部分 ETF 來源失敗：")
         lines.extend(f"• {e}" for e in errors)
     lines.append("")
-    lines.append("張數為前後兩個持股日快照差異，非正式成交明細。")
+    lines.append("張數為兩個持股日快照相減，非正式成交明細。")
     return "\n".join(lines)
 
 

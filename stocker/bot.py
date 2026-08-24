@@ -5,7 +5,7 @@ from stocker.jobs import StockerApp
 MENU_TEXT = (
     "Stocker 主選單\n"
     "• 立即推播：重訊 + 投信買賣超 + 主動 ETF\n"
-    "• ETF加減碼：每檔實際買賣超股票明細（張數）\n"
+    "• ETF加減碼：多檔同步加減碼共識排行\n"
     "• 立刻抓重訊：只送尚未推過的高重要性訊息\n"
     "平日排程仍會自動跑（08:00–17:40 重訊、21:30 摘要）。"
 )
@@ -15,7 +15,7 @@ HELP_TEXT = (
     "立即推播／/daily\n"
     "馬上抓今日重訊、投信買賣超、前五大主動 ETF。\n\n"
     "ETF加減碼／/etf\n"
-    "列出每檔主動 ETF 買超／賣超股票、張數與權重變化，以及五檔合計。\n\n"
+    "只列共識排行：越多檔主動 ETF 同向加減碼越前面，並標出比較的兩個交易日。\n\n"
     "立刻抓重訊／/mops\n"
     "只推還沒送過的高重要性重大訊息。\n\n"
     "測試連線／/start\n"
@@ -39,7 +39,7 @@ def handle_message(app: StockerApp, text: str) -> None:
         app.send_test()
         return
     if command in {"/etf", "ETF加減碼", "主動ETF加減碼"}:
-        app.telegram.send("正在抓取主動 ETF 買賣超明細，大約 20 秒…")
+        app.telegram.send("正在抓取主動 ETF 共識排行，大約 20 秒…")
         app.etf_report(send=True)
         return
     if command in {"/daily", "立即推播"}:
