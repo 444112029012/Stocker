@@ -199,3 +199,17 @@ def consensus_moves(
         rows.append((side, code, items[0].stock_name, etfs, net))
     rows.sort(key=lambda r: (-len(r[3]), -abs(r[4])))
     return rows
+
+
+def top_weight_moves(
+    all_moves: list[HoldingMove],
+    min_abs_weight: float,
+    limit: int,
+) -> list[HoldingMove]:
+    ranked = [
+        move
+        for move in all_moves
+        if abs(move.delta_weight) >= min_abs_weight or move.action in {"new", "exit"}
+    ]
+    ranked.sort(key=lambda m: (abs(m.delta_weight), abs(m.delta_shares)), reverse=True)
+    return ranked[:limit]

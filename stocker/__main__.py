@@ -14,7 +14,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="本機常駐排程（電腦需開機）")
     sub.add_parser("test", help="發送一則 Telegram 測試訊息")
-    sub.add_parser("mops", help="立刻抓一次重大訊息（高重要性才推播）")
+    sub.add_parser("mops", help="立刻抓一次罕見重大訊息")
     daily = sub.add_parser("daily", help="立刻產生並推播每日摘要")
     daily.add_argument("--print-only", action="store_true", help="只印出摘要、不推播")
     etf = sub.add_parser("etf", help="立刻推主動 ETF 共識排行")
@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "mops":
             n = app.poll_mops(send_high=True)
-            print(f"新的高重要性訊息：{n} 則")
+            print(f"新的罕見重訊：{n} 則")
             return 0
         if args.command == "daily":
             text = app.daily_report(force=True, send=not args.print_only)

@@ -29,8 +29,8 @@ def run_scheduler() -> None:
     scheduler.start()
 
     print("Stocker 已啟動（本機排程 + Telegram 主選單，電腦需保持開機）")
-    print("  平日 08:00-17:40 每 20 分鐘：重要重大訊息")
-    print("  平日 21:30：投信買賣超 + 主動式 ETF 加減碼摘要")
+    print("  平日 08:00-17:40 每 20 分鐘：罕見重訊（停工／減資／私募／併購／董總）")
+    print("  平日 21:30：短摘要（重訊 8 則、投信 Top 5、ETF 共識）")
     print("  Telegram 按鈕：立即推播／ETF加減碼／立刻抓重訊／測試連線／使用說明")
     try:
         app.telegram.set_commands()

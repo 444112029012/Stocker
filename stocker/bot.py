@@ -4,20 +4,20 @@ from stocker.jobs import StockerApp
 
 MENU_TEXT = (
     "Stocker 主選單\n"
-    "• 立即推播：重訊 + 投信買賣超 + 主動 ETF\n"
+    "• 立即推播：重訊全部列出（前 8 則詳細、其餘一行）、投信 Top 5、ETF 共識\n"
     "• ETF加減碼：多檔同步加減碼共識排行\n"
-    "• 立刻抓重訊：只送尚未推過的高重要性訊息\n"
+    "• 立刻抓重訊：只送停工／減資／私募／併購／董總等罕見事件\n"
     "平日排程仍會自動跑（08:00–17:40 重訊、21:30 摘要）。"
 )
 
 HELP_TEXT = (
     "使用說明\n\n"
     "立即推播／/daily\n"
-    "馬上抓今日重訊、投信買賣超、前五大主動 ETF。\n\n"
+    "重訊會全部列出：前 8 則用詳細卡片，其餘改一行摘要；不含財報／董事會。另有投信 Top 5 與 ETF 共識。\n\n"
     "ETF加減碼／/etf\n"
-    "只列共識排行：越多檔主動 ETF 同向加減碼越前面，並標出比較的兩個交易日。\n\n"
+    "只列共識排行；沒有共識時改列權重變化。會交叉對照當日重訊（同向／背離）。\n\n"
     "立刻抓重訊／/mops\n"
-    "只推還沒送過的高重要性重大訊息。\n\n"
+    "只推尚未送過的罕見事件，並標利多／利空／中性（規則判斷，非正式建議）。\n\n"
     "測試連線／/start\n"
     "確認機器人還活著，並叫出下方按鈕。\n\n"
     "請保持本機 python -m stocker run 視窗開著。"
@@ -50,7 +50,10 @@ def handle_message(app: StockerApp, text: str) -> None:
         app.telegram.send("正在檢查重大訊息…")
         n = app.poll_mops(send_high=True)
         if n == 0:
-            app.telegram.send("目前沒有尚未推播的高重要性重訊。")
+            app.telegram.send(
+                "目前沒有新的罕見重訊（停工、減資、私募、併購、董總異動等）。\n"
+                "已推過的不會重送；增資、庫藏股請按「立即推播」。"
+            )
         return
     app.telegram.send_menu("沒有這個指令。請用下方按鈕，或送 /start。")
 

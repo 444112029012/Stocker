@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 
 from stocker.collectors.etf import fetch_etf_snapshot, select_top_etfs
-from stocker.collectors.mops import fetch_material_news
+from stocker.collectors.mops import collapse_similar, fetch_material_news
 from stocker.collectors.t86 import fetch_trust_flows
 from stocker.db import Database
 from stocker.http import HttpClient
@@ -28,14 +28,17 @@ class StockerApp:
     def poll_mops(self, send_high: bool = True) -> int:
         with self._lock:
             news = fetch_material_news(self.http)
-            high = [item for item in news if item.level == "high"]
-            unseen_keys = set(self.db.unseen("mops", [item.key for item in high]))
-            fresh = [item for item in high if item.key in unseen_keys]
-            if send_high and fresh:
-                self.telegram.send(format_high_news(fresh))
-                for item in fresh:
-                    self.db.mark_seen("mops", item.key)
-            return len(fresh)
+            alerts = [item for item in news if item.level == "alert"]
+            unseen_keys = set(self.db.unseen("mops", [item.key for item in alerts]))
+            fresh = [item for item in alerts if item.key in unseen_keys]
+            kept, dropped = collapse_similar(fresh)
+            if send_high and kept:
+                self.telegram.send(
+                    format_high_news(kept, limit=self.settings.mops_push_limit)
+                )
+            for item in kept + dropped:
+                self.db.mark_seen("mops", item.key)
+            return len(kept)
 
     def _collect_etfs(self) -> tuple[list, list, dict[str, str], bool, list[str]]:
         snapshots = []
@@ -79,7 +82,9 @@ class StockerApp:
     def daily_report(self, force: bool = False, send: bool = True) -> str:
         with self._lock:
             news = fetch_material_news(self.http)
-            important = [item for item in news if item.level in {"high", "medium"}]
+            important, _dropped = collapse_similar(
+                [item for item in news if item.level in {"alert", "high"}]
+            )
             as_of, flows = fetch_trust_flows(self.http)
             snapshots, moves, prev_dates, etf_has_history, errors = self._collect_etfs()
             report_date = as_of or (snapshots[0].as_of if snapshots else "unknown")
@@ -106,6 +111,10 @@ class StockerApp:
     def etf_report(self, send: bool = True) -> str:
         with self._lock:
             snapshots, moves, prev_dates, etf_has_history, errors = self._collect_etfs()
+            news = fetch_material_news(self.http)
+            important, _dropped = collapse_similar(
+                [item for item in news if item.level in {"alert", "high"}]
+            )
             text = format_etf_detail(
                 snapshots,
                 moves,
@@ -113,6 +122,7 @@ class StockerApp:
                 etf_has_history,
                 prev_dates=prev_dates,
                 errors=errors,
+                news=important,
             )
             if send:
                 self.telegram.send(text)

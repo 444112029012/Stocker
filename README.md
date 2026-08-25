@@ -16,8 +16,8 @@
 
 | 時間（台北） | 內容 |
 |---|---|
-| 平日 08:00–17:40 每 20 分鐘 | 全市場**高重要性**重大訊息（減資、併購、庫藏股、停工、董總異動等） |
-| 平日 21:30 | 每日摘要：重要重訊、投信買賣超 Top 10、主動 ETF **共識排行**（同步檔數越多越前面） |
+| 平日 08:00–17:40 每 20 分鐘 | 盤中重訊：僅停工、減資、私募、併購、董總異動等，同公司同類只留一則，最多 8 則 |
+| 平日 21:30 | 短摘要：重訊最多 8 則、投信買賣超 Top 5、主動 ETF 共識排行 |
 
 預設追蹤的主動式 ETF（依近期規模前五大，可在 `stocker/settings.py` 改）：
 
@@ -72,9 +72,9 @@ python -m stocker run
 
 或雙擊 `run.bat`。視窗不要關。Telegram 下方會出現：
 
-- **立即推播**：馬上送每日摘要  
+- **立即推播**：短摘要（重訊最多 8 則、投信 Top 5、ETF 共識）  
 - **ETF加減碼**：多檔同步加減碼共識排行（含比較的兩個交易日）  
-- **立刻抓重訊**：只送還沒推過的高重要性訊息  
+- **立刻抓重訊**：停工／減資／私募／併購／董總等，同公司同類只留一則  
 - **測試連線** / **使用說明**
 
 也可直接打 `/start`、`/daily`、`/etf`、`/mops`。
@@ -93,7 +93,7 @@ python -m stocker run
 
 ```text
 python -m stocker test          # Telegram 測試（並叫出主選單）
-python -m stocker mops          # 立刻抓高重要性重訊
+python -m stocker mops          # 立刻抓罕見重訊
 python -m stocker daily         # 立刻推每日摘要
 python -m stocker daily --print-only
 python -m stocker etf           # 主動 ETF 共識排行

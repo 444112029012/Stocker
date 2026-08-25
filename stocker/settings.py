@@ -43,14 +43,18 @@ class Settings:
     )
     request_pause_sec: float = 1.2
     etf_top_n: int = 5
-    t86_top_n: int = 10
-    news_digest_limit: int = 30
+    t86_top_n: int = 5
+    news_digest_limit: int = 8
+    mops_push_limit: int = 8
     etf_moves_per_fund: int = 15
     etf_detail_per_side: int = 40
     etf_consensus_limit: int = 25  # 共識排行最多列幾檔，避免洗頻
     share_change_threshold: int = 1_000  # 1 張才列入買賣超
     weight_change_threshold: float = 0.15  # 百分點（保留，持股張數未變時不列）
     consensus_min_etfs: int = 2
+    etf_fallback_limit: int = 8  # 無共識時改列權重變化最大幾筆
+    etf_fallback_min_weight: float = 0.3  # 百分點
+    etf_news_pair_limit: int = 8  # 重訊與 ETF 加減碼交叉最多幾筆
 
 
 def load_settings() -> Settings:
